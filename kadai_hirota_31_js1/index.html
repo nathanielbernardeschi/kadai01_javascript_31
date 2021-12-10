@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Block</title>
+	<link rel="stylesheet" href="css/reset.css">
+	<link rel="stylesheet" href="css/style.css">
+	<style>*{padding:0;margin:30}
+		canvas{background: #ece8cb; display: block; margin: 0 auto; }
+		</style>
+</head>
+
+<body>
+
+	<h1 id="title">BREAKOUT</h1>
+<!--		<div>円の太さ
+			<input
+			id="radius-selector" type="range" value="4" min="3" max="6" step="1">
+				現在の線の太さを表す数値を表示するための要素 
+				input要素のスライドを動かすたびに値が更新される 
+			<span id="radius">5</span>
+	  	</div>									-->
+	
+	<canvas id="drawarea" width=480 height=320 style="border:1px solid #ccc"></canvas>
+
+<script>
+	var canvas = document.getElementById("drawarea");	//canvasからhtmlドキュメント要素を取得
+	var ctx = canvas.getContext("2d");	//canvasにおける描画を有効化する（書き込み権限付与）ここまで定型
+
+//	var currentradius = 5;	// <input id="radius-selector" type="range">と一致 
+	var ballRadius = 5;	//半径
+
+	var x = canvas.width/2;		//最初の位置（幅中央）
+	var y = canvas.height-20;	//最初の位置（下端からの高さ）
+
+	var dx = 5;		//移動速度（x軸）
+	var dy = -3;	//移動速度（y軸）→ボールのスピードと角度の定義
+
+	var paddleHeight = 5; //paddleの高さ
+	var paddleWidth = 60;	//paddleの幅
+	var paddleX = (canvas.width-paddleWidth)/2;	//paddleの開始地点（幅中央：ボールと同一）
+	
+	var rightPressed = false;	//初期状態ではキーが押されていないため
+	var leftPressed = false;	//初期状態ではキーが押されていないため
+
+	var brickRowCount = 5;
+	var brickColumnCount = 5;
+	var brickWidth = 75;
+	var brickHeight = 15;
+	var brickPadding = 10;
+	var brickOffsetTop = 30;
+	var brickOffsetLeft = 30;
+	var score = 0;
+
+	var bricks = [];	//配列の宣言：座標
+	for(var c=0; c<brickColumnCount; c++) {		//cがbrickの列数を超える手前まで１を足し続ける
+		bricks[c] = [];	//配列の宣言：座標
+		for(var r=0; r<brickRowCount; r++) {	//rがbrickの行数を超える手前まで１を足し続ける
+			bricks[c][r] = { x: 0, y: 0, status: 1 };	//まだ衝突していない状態の記述
+		}
+	}
+
+	
+//挙動
+
+	document.addEventListener("keydown", keyDownHandler, false);
+	document.addEventListener("keyup", keyUpHandler, false);
+
+	function keyDownHandler(e) {
+		if( e.key == "ArrowRight") {
+			rightPressed = true;
+		}		//キーが押されている時にtrue
+		else if( e.key == "ArrowLeft") {
+			leftPressed = true;
+		}		//キーが押されている時にtrue
+	}
+	function keyUpHandler(e) {
+		if( e.key == "ArrowRight") {
+			rightPressed = false;
+		}		//キーが押されている時にfalse（初期状態に戻る）
+		else if( e.key == "ArrowLeft") {
+			leftPressed = false;
+		}		//キーが押されている時にfalse（初期状態に戻る）
+	}
+	function collisionDetection(){	//衝突が起きているかどうかを検出するための関数
+		for(var c=0; c<brickColumnCount; c++){
+			for(var r=0; r<brickRowCount; r++){
+				var b= bricks[c][r];
+				if(b.status == 1){
+					if( x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight){
+						dy = -dy;
+						b.status = 0;	//衝突した状態の記述
+						score++; 
+						if(score == brickRowCount*brickColumnCount){//scoreがbrickの合計に一致した時点で終了（勝利条件）
+							alert("YOU WIN,CONGRATURATION!");
+							document.location.reload();
+							clearInterval(interval);
+						}
+					}
+				}
+			}
+		}
+	}
+
+
+
+//パーツを作る
+//	function radiusselector(){
+//		const currentsize = document.querySelector("radius");
+//
+//	}
+	function drawBall(){
+		ctx.beginPath();	//座標を一度リセットしている状態：描画の開始→終了までのコマンドで構成
+		ctx.arc(x, y, ballRadius, 0, Math.PI*2);	//円の定義（中心座標,半径,描画開始地点,円周率＝円周の長さ）
+		ctx.lineWidth = 1
+		ctx.strokeStyle = "#c05072";	//当たった時に色を変更する（後でやる）
+		ctx.stroke();		
+		ctx.closePath();	//描画の終了		
+	}
+	function drawPaddle() {
+		ctx.beginPath();
+		ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);	//四角形
+		ctx.fillStyle = "#c05072";
+		ctx.fill();
+		ctx.closePath();
+	}
+	function drawBricks() {
+		for(var c = 0; c < brickColumnCount; c++) {	//cの値がbrickの数（列）を超える手前まで１を足し続ける：ループで上限まで生成
+			for(var r = 0; r < brickRowCount; r++) {	//rの値がbrickの数（行）を超える手前まで１を足し続ける：ループで上限まで生成
+				if(bricks[c][r].status == 1){	//statusが１である限りにおいてbrickが描画
+					var brickX = (r*(brickWidth+brickPadding))+ brickOffsetLeft;
+					var brickY =  (c*(brickHeight+brickPadding))+brickOffsetTop;
+					bricks[c][r].x = brickX;	
+					bricks[c][r].y = brickY;
+					ctx.beginPath();
+					ctx.rect(brickX, brickY, brickWidth, brickHeight);	//四角形をつくる
+					ctx.fillStyle = "#c05072";
+					ctx.fill();
+					ctx.closePath();	
+				}				
+			}
+		}
+	}
+	function drawScore(){
+		ctx.font = "18px sans";
+		ctx.fillStyle = "#8c1d47";
+		ctx.fillText("Score: "+score, 20, 22);	//(20,22の位置に文字を配置)
+	}
+
+
+
+//画面上に描画する
+	function draw(){
+		ctx.clearRect(0, 0, canvas.width, canvas.height);	//前フレームで描画されたオブジェクトを削除→このコマンドがないと描画が残る
+		drawBall();	//f.drawballを実行
+		drawBricks();	//f.drawbricksを実行
+		drawPaddle();	//f.drawpaddleを実行
+		drawScore();	//f.drawscoreを実行
+		collisionDetection();	//f.collisionditectionを実行
+		
+		if(x+dx > canvas.width-ballRadius || x+dx < ballRadius) {
+			dx = -dx;
+		}	//x軸の移動距離がcanvasの幅を超えた場合またはx軸の移動距離がボールの半径を超えなかった場合、折り返す（バウンド）
+		if(y+dy < ballRadius){
+			dy = -dy;
+		}	//y軸の移動距離がボールの半径を超えない場合、折り返す（バウンド）
+		else if(y+dy > canvas.height-ballRadius){	//y軸の移動距離がcanvasの高さとボールの半径の差を超えた場合において、下のコマンドを有効にする
+			if( x > paddleX && x < paddleX + paddleWidth){	//ボールの位置がpaddleの長さと位置の和の範疇におさまっている場合に折り返し：paddleが右端に来た時の処理
+				dy = -dy;
+			}
+			else{
+				alert("GAME OVER");
+				document.location.reload();
+				clearInterval(interval);
+			}
+		}
+		if(rightPressed && paddleX < canvas.width-paddleWidth) {
+			paddleX += 8;	//paddleの移動速度（右）
+		}
+		else if(leftPressed && paddleX > 0) {
+			paddleX -= 8;	//paddleの移動速度（左）
+		}
+
+		x += dx;	//基準座標にフレームの更新回数分の座標を加える
+		y += dy;	//基準座標にフレームの更新回数分の座標を加える
+	}
+
+	var interval = setInterval(draw, 30);	//フレームの更新間隔＝全体のスピード
+</script>
+	
+</body>
+
+</html>
